@@ -1,0 +1,12 @@
+gateway:
+  app:
+    firebase:
+      googleCloudProject: test
+      config: RedirectTo=303, /js/firebase-config.js
+    auth: none
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration

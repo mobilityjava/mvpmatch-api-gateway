@@ -1,0 +1,241 @@
+<head>
+
+  <title>Gateway App Registration</title>
+  <script src="https://www.gstatic.com/firebasejs/8.6.7/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.7/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/ui/4.8.0/firebase-ui-auth__de.js"></script>
+  <link type="text/css" rel="stylesheet"
+        href="https://www.gstatic.com/firebasejs/ui/4.8.0/firebase-ui-auth.css"/>
+
+  <!-- routes to stage config depending on the active spring profile -->
+  <script src="js/firebase-config.js"></script>
+
+  <link type="text/css" rel="stylesheet" href="css/app.css"/>
+  <script>
+    var ui = new firebaseui.auth.AuthUI(firebase.auth());
+    var uiConfig = {
+      callbacks: {
+        signInSuccessWithAuthResult: function (authResult, redirectUrl) {
+          createdUser(result.user);
+          // prevent redirect after registration
+          return false;
+        },
+        uiShown: function () {
+          // Hide the loader.
+          document.getElementById('loader').style.display = 'none';
+        }
+      },
+      signInFlow: 'redirect',
+      signInOptions: [
+        firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      ],
+
+    };
+
+    ui.start('#firebaseui-auth-container', uiConfig);
+  </script>
+
+  <script type="text/javascript">
+
+    let firebaseUser;
+    let currentAccessToken;
+    let emailValidated = true;
+
+    initApp = function () {
+
+      firebase.auth().onAuthStateChanged(function (user) {
+        firebaseUser = user;
+        if (firebaseUser) {
+          uiStateRegister()
+        } else {
+          uiStateInit()
+        }
+      }, function (error) {
+        console.log(error);
+      });
+    }
+
+    createUserInFirebase = function () {
+      var email = document.getElementById("email").value
+      document.getElementById("email-contact").value = email
+      document.getElementById("email-contact").disabled = true;
+      var pass = document.getElementById("password").value
+      firebase.auth().createUserWithEmailAndPassword(email, pass)
+      .then((userCredential) => {
+        // user was created in firebase
+        createdUser(userCredential.user)
+      })
+      .catch((error) => {
+        document.getElementById('email-registration-warning').textContent = error.message;
+        document.getElementById('email-registration-warning').style.display = 'block'
+        console.log(error)
+      });
+    }
+
+    createdUser = function (user) {
+      firebaseUser = user;
+      uiStateRegister()
+    }
+
+    createBackendUser = function () {
+      if (emailValidated) {
+        let backendUser = {
+          id: firebaseUser.uid,
+          email: document.getElementById("email-contact").value,
+          name: document.getElementById("name").value,
+          lastName: document.getElementById("last-name").value,
+        }
+        const validateEmailURL = "../v1/users/current"
+        const parms = {
+          body: JSON.stringify(backendUser),
+          headers: {
+            "Authorization": "Bearer " + currentAccessToken,
+            "Content-Type": "application/json"
+          },
+          method: "POST"
+        }
+        fetch(validateEmailURL, parms).then(response => {
+          if (response.status === 200) {
+            uiStateRegistered();
+          } else {
+            response.text().then(text => registrationWarning(response.status + ': ' + text))
+          }
+        }).catch(error => registrationWarning(error));
+        // TODO use newsletter endpoint after creation
+        console.log(document.getElementById("newsletter").value)
+      } else {
+        registrationWarning("Eingegebene Daten sind nicht korrekt.")
+      }
+    }
+
+    validateRegistrationEmail = function () {
+      const email = document.getElementById("email").value;
+      const validateEmailURL = "../v1/users/validateEmail"
+      const parms = {
+        body: email,
+        method: "POST"
+      }
+      return fetch(validateEmailURL, parms).then(response => {
+        if (response.status === 200) {
+          document.getElementById('email-registration-warning').style.display = 'none';
+          document.getElementById('email-registration-warning').textContent = '';
+          document.getElementById('email-signup').disabled = false
+        } else {
+          document.getElementById('email-registration-warning').style.display = 'block';
+          document.getElementById(
+              'email-registration-warning').textContent = 'E-Mail schon registiert!';
+          document.getElementById('email-signup').disabled = true
+
+        }
+      }).catch(
+          error => console.log("validation email failed: " + error))
+    }
+    registrationWarning = function (warningText) {
+
+      document.getElementById('registration-warning').textContent = warningText;
+      document.getElementById('registration-warning').style.display = 'block';
+
+    }
+
+    window.addEventListener('load', function () {
+      initApp()
+    });
+
+    uiStateInit = function () {
+
+      document.getElementById('signUpForm').style.display = 'block';
+      document.getElementById('registrationForm').style.display = 'none';
+
+      document.getElementById('email').disabled = true
+      document.getElementById('password').disabled = true
+      document.getElementById('email-signup').disabled = true
+      document.getElementById('firebaseui-auth-container').style.display = 'none';
+      document.getElementById('social-login-explain').style.display = 'block';
+      uiStateConsent()
+    }
+
+    uiStateConsent = function () {
+
+      document.getElementById('email').disabled = false
+      document.getElementById('password').disabled = false
+      document.getElementById('email-signup').disabled = false
+      document.getElementById('firebaseui-auth-container').style.display = 'block';
+      document.getElementById('social-login-explain').style.display = 'none';
+    }
+
+    uiStateRegister = function () {
+      firebaseUser.getIdToken(true).then(function (accessToken) {
+        currentAccessToken = accessToken
+
+        document.getElementById('signUpForm').style.display = 'none';
+        document.getElementById('registrationForm').style.display = 'block';
+
+        firebaseUser.providerData.forEach(profile => {
+          document.getElementById("email-contact").value = profile.email
+          document.getElementById("email-contact").disabled = profile.providerId === "password";
+        })
+      });
+    }
+
+    uiStateRegistered= function (){
+      firebase.auth().signOut().then(() => {
+        location.replace("login.html")
+      })
+    }
+
+  </script>
+
+</head>
+<body>
+<div id="signUpForm" class="centeredContainer" style="display: none">
+  <div class="text">
+    Your app access account
+  </div>
+  <div class="centered">
+    <div>
+      <label for="email">E-mail Address</label><input id="email">
+    </div>
+    <div>
+      <label for="password">Password</label><input type="password" id="password">
+    </div>
+    <div id="email-registration-warning" class="error" style="display: none"></div>
+    <div>
+      <button id="email-signup" class="full" onclick="createUserInFirebase()">
+        Register with Email
+      </button>
+    </div>
+  </div>
+  <div id="social-login-container">
+    <div class="full text_small">
+      ------------------------- OR
+      -------------------------
+    </div>
+    <div id="social-login-explain" class="full text">
+      Register via Google or email registration
+    </div>
+    <div id="loader">Loading...</div>
+    <div id="firebaseui-auth-container"></div>
+  </div>
+  <div class="centered">
+    <div class="text">do you have an account?</div>
+    <a class="text" href="login.html">Register</a>
+  </div>
+</div>
+<div class="centeredContainer" id="registrationForm" style="display: none">
+  <div class="centered text">Complete your profile</div>
+  <div class="centered"><label for="email-contact">E-MAIL address</label><input id="email-contact">
+    <div id="email-contact-warning" class="error" style="display: none">E-Mail have registered!
+    </div>
+  </div>
+  <div class="centered"><label for="first-name">name</label><input id="first-name"></div>
+  <div class="centered"><label for="last-name">Last name</label><input id="last-name"></div>
+  </div>
+  <div class="centered">
+    <div id="registration-warning" class="error" style="display: none">
+    </div>
+    <button onclick="createBackendUser()">Register</button>
+  </div>
+</div>
+
+
+</body>

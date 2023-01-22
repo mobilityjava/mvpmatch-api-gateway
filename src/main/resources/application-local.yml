@@ -1,0 +1,17 @@
+gateway:
+  app:
+    firebase:
+      googleCloudProject: mobility-app-992f1
+      config: RedirectTo=303, /js/firebase-config.js
+    services:
+      userService: http://localhost:8100/
+      productService: http://localhost:8101/
+    allowedOrigins:
+    internalUrls: >
+      http://localhost:[*]
+    externalUrls: >
+      https://testapp.com,
+      https://www.testapp.com
+
+server:
+  port: 8080

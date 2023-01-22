@@ -1,0 +1,95 @@
+gateway:
+  app:
+    auth: oauth2
+    services:
+      userService: http://user-service:8080/
+      productService: http://product-service:8080/
+    allowedOrigins:
+      internalUrls: http://localhost:4200
+    firebase:
+      googleCloudProject: mobility-app-df251
+
+spring:
+  application:
+    name: api-gateway
+  jmx:
+    enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com
+          issuer-uri: https://securetoken.google.com/${gateway.app.firebase.googleCloudProject}
+  web:
+    resources:
+      static-locations[0]: "file:src/main/resources/static/"
+      static-locations[1]: "classpath:/static/"
+  cloud:
+    gateway:
+      routes:
+        # User Service
+        - id: domain_user_route
+          uri: ${gateway.app.services.userService}
+          predicates:
+            - Path=/v*/users/**, /admin/v*/users/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - Forwarding=
+        - id: api_doc_user_route
+          uri: ${gateway.app.services.userService}
+          predicates:
+            - Path=/v3/api-docs/users
+          filters:
+            - RewritePath=/v3/api-docs/users, /v3/api-docs
+        # Product Service
+        - id: domain_product_route
+          uri: ${gateway.app.services.productService}
+          predicates:
+            - Path=/v*/product/**, /admin/v*/product/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - Forwarding=
+        - id: api_doc_product_route
+          uri: ${gateway.app.services.productService}
+          predicates:
+            - Path=/v3/api-docs/product
+          filters:
+            - RewritePath=/v3/api-docs/product, /v3/api-docs
+        # internal
+        - id: doc_user_route
+          uri: no://op
+          predicates:
+            - Path=/docs/users
+          filters:
+            - RedirectTo=303, /swagger-ui/webjars/swagger-ui/index.html?url=/v3/api-docs/users
+        - id: doc_product_route
+          uri: no://op
+          predicates:
+            - Path=/docs/product
+          filters:
+            - RedirectTo=303, /swagger-ui/webjars/swagger-ui/index.html?url=/v3/api-docs/product
+  data:
+    mongodb:
+      uri: mongodb://admin:admin@localhost:27017/api-gateway?authSource=admin
+      auto-index-creation: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/api-docs.html
+    query-config-enabled: true
+
+# actuator settings
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+  endpoints:
+    web:
+      exposure:
+        include: health, caches, env, info, loggers, metrics, mappings
+  health:
+    mongo:
+      enabled: false
+
+server:
+  shutdown: graceful

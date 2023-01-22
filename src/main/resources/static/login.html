@@ -1,0 +1,111 @@
+<head>
+  <title>App Login</title>
+  <script src="https://www.gstatic.com/firebasejs/8.6.7/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.7/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/ui/4.8.0/firebase-ui-auth__de.js"></script>
+  <link type="text/css" rel="stylesheet"
+        href="https://www.gstatic.com/firebasejs/ui/4.8.0/firebase-ui-auth.css"/>
+
+  <!-- routes to stage config depending on the active spring profile -->
+  <script src="js/firebase-config.js"></script>
+
+  <link type="text/css" rel="stylesheet" href="css/app.css"/>
+
+  <script>
+    var ui = new firebaseui.auth.AuthUI(firebase.auth());
+    var uiConfig = {
+      callbacks: {
+        signInSuccessWithAuthResult: function (authResult, redirectUrl) {
+          // prevent redirect after login
+          return false;
+        },
+        uiShown: function () {
+          // Hide the loader.
+          document.getElementById('loader').style.display = 'none';
+        },
+      },
+      signInFlow: 'redirect',
+      signInOptions: [
+        firebase.auth.EmailAuthProvider.PROVIDER_ID,
+        firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      ],
+      // autoUpgradeAnonymousUsers: true
+    };
+
+    ui.start('#firebaseui-auth-container', uiConfig);
+  </script>
+
+  <script type="text/javascript">
+    let currentUser;
+    let currentAccessToken;
+
+    refreshToken = function (force) {
+      if (currentUser) {
+        currentUser.getIdToken(force).then(function (accessToken) {
+          currentAccessToken = accessToken
+          document.getElementById("token").innerText = currentAccessToken;
+        });
+      }
+    }
+
+    logOut = function () {
+      if (currentUser) {
+        // logOut on API
+        const logoutURL = "../v1/logout"
+        const logoutParm={
+          headers:{
+            "Authorization":"Bearer "+currentAccessToken
+          },
+          method: "POST"
+        }
+        fetch(logoutURL,logoutParm).then(ignored => {
+          // logOut on SPA
+          firebase.auth().signOut().then(() => {
+            location.reload();
+          }).catch((error) => {
+            console.log(error);
+          });
+        }).catch(error=>console.log(error))
+      }
+    }
+
+    initApp = function () {
+      firebase.auth().onAuthStateChanged(function (user) {
+        if (user) {
+          // User is signed in.
+          currentUser = user;
+          document.getElementById('firebaseui-auth-container').style.display = 'none';
+          document.getElementById('loader').style.display = 'none';
+          document.getElementById('token-container').style.display = 'block';
+          refreshToken(false)
+        } else {
+          // User is signed out.
+          document.getElementById('firebaseui-auth-container').style.display = 'block';
+          document.getElementById('token-container').style.display = 'none';
+        }
+      }, function (error) {
+        console.log(error);
+      });
+    };
+
+    window.addEventListener('load', function () {
+      initApp()
+    });
+
+  </script>
+
+</head>
+<body>
+<div id="firebaseui-auth-container" style="display: none"></div>
+<div id="loader">Loading...</div>
+<div id="token-container" style="display: none"><h2>Token</h2>
+  <div id="token"></div>
+  <button onclick="refreshToken(true)">Refresh</button>
+  <button onclick="logOut()">Logout</button>
+</div>
+<div class="centeredContainer">
+  <div class="text">You have no account?</div>
+  <div class="text"><a href="register.html">Register</a></div>
+</div>
+
+</body>

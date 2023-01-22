@@ -1,0 +1,57 @@
+* {
+  font-family: Verdana, Helvetica, serif;
+  color: #525252;
+}
+
+.full {
+  width: 100%;
+}
+
+.centered {
+  margin: auto;
+  width: 50%;
+  padding-top: 10px;
+}
+
+.text {
+  font-size: 15px;
+  width: 210px;
+  margin: auto;
+}
+
+.text_small {
+  font-size: 12px;
+  width: 300px;
+  margin: auto;
+}
+
+.centeredContainer {
+  margin: auto;
+  max-width: 360px;
+}
+
+.error {
+  color: firebrick;
+  font-size: 12px;
+}
+
+label {
+  font-size: 12px;
+  color: lightslategray;
+}
+
+#social-login-container {
+  height: 200px;
+}
+
+#social-login-explain {
+  padding-top: 80px;
+}
+
+input {
+  margin: 2px
+}
+
+button {
+  margin: 2px
+}
